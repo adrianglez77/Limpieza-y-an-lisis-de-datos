@@ -1,0 +1,300 @@
+---
+title: "Tipología y ciclo de vida de los datos - PRA2"
+author: "Adrián González"
+date: '2023-01-11'
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 2. Integración y selección
+
+Se cargan algunas librerías básicas para generar gráficos y para manejar los datos.
+
+```{r}
+library(ggplot2)
+library(dplyr)
+```
+
+Para comenzar, cargaremos el dataset y visualizaremos las primeras filas.
+
+```{r}
+heart <- read.csv("H:/Mi unidad/Tipología y ciclo de vida de los datos/PRA 2 - 13ene/heart.csv")
+head(heart)
+```
+
+Con la función "summary", vamos a obtener un breve resumen estadístico de las variables.
+
+```{r}
+summary(heart)
+```
+
+El siguiente paso será ver la estructura del conjunto de datos, con la función "str".
+
+```{r}
+str(heart)
+```
+
+Se observa que hay 303 registros y 14 variables. Se observa que todas las variables son numéricas. Ahora, reformatearemos las variables categóricas como factores.
+
+La primera variable con la trabajaremos será "sex", ya que el 0 indica a una mujer y el 1 a un hombre, lo pondremos como factor.
+
+```{r}
+heart$sex <- as.factor(heart$sex)
+
+heart$sex <- factor(heart$sex, levels=c(0,1), labels=c("mujer", "hombre"))
+
+head(heart)
+```
+
+Vemos que los cambios se han aplicado.
+
+```{r}
+str(heart)
+```
+
+Lo siguiente será factorizar las demás variables discretas.
+
+```{r}
+heart$cp <- as.factor(heart$cp)
+heart$fbs <- as.factor(heart$fbs)
+heart$restecg <- as.factor(heart$restecg)
+heart$exng <- as.factor(heart$exng)
+heart$slp <- as.factor(heart$slp)
+heart$caa <- as.factor(heart$caa)
+heart$thall <- as.factor(heart$thall)
+heart$output <- as.factor(heart$output)
+str(heart)
+```
+
+# 3. Limpieza de datos
+
+## 3.1 Ceros o elementos vacíos
+
+```{r}
+sapply(heart,function(x) sum(is.na(x)))
+```
+
+```{r}
+colSums(heart =="")
+```
+
+## 3.2 Valores extremos
+
+```{r}
+boxplot(heart$age,main = "Edad",col="blue")
+boxplot(heart$trtbps,main = "Presión arterial",col="green")
+boxplot(heart$chol,main = "Colesterol",col="red")
+boxplot(heart$thalachh,main = "Ritmo cardiaco max",col="yellow")
+boxplot(heart$oldpeak,main = "Pico anterior",col="purple")
+```
+
+```{r}
+boxplot.stats(heart$trtbps)$out
+boxplot.stats(heart$chol)$out
+boxplot.stats(heart$thalachh)$out
+```
+
+```{r}
+write.csv(heart, "H:/Mi unidad/Tipología y ciclo de vida de los datos/PRA 2 - 13ene/heart_limpio.csv")
+```
+
+# 4. Análisis de datos
+
+## 4.1
+
+```{r}
+heart["edad_r"] <- cut(heart$age, breaks = c(0,35,45,55,60,65,100),labels = c("<=35", "36-45","46-55","56-60","61-65",">65"))
+
+table(heart$edad_r)
+```
+
+```{r}
+summary(heart)
+```
+
+## 4.2
+
+```{r}
+ggplot(heart, aes(x=chol)) + 
+  geom_histogram(fill="lightblue2", colour="black") +
+  labs(x="chol", y="Frecuencia") +
+  theme_bw()
+
+
+ggplot(heart, aes(x=trtbps)) + 
+  geom_histogram(fill="lightblue2", colour="black") +
+    labs(x="trtbps", y="Frecuencia") +
+  theme_bw()
+
+ggplot(heart, aes(x=thalachh)) + 
+  geom_histogram(fill="lightblue2", colour="black") +
+    labs(x="thalachh", y="Frecuencia") +
+  theme_bw()
+
+ggplot(heart, aes(x=oldpeak)) + 
+  geom_histogram(fill="lightblue2", colour="black") +
+    labs(x="oldpeak", y="Frecuencia") +
+  theme_bw()
+```
+
+Q-Q test para distribución normal.
+
+```{r}
+library(moments)
+```
+
+```{r}
+juntar <- par(mfrow=c(2,3))
+
+qq1 <- qqnorm(heart$chol, main = "Q-Q Plot chol");qqline(
+heart$chol, col = 2)
+
+qq2 <- qqnorm(heart$trtbps, main = "Q-Q trtbps");qqline(
+heart$trtbps, col = 2)
+
+
+qq3 <- qqnorm(heart$thalachh, main = "Q-Q Plot thalachh");qqline(
+heart$thalachh, col = 2)
+
+
+qq4 <- qqnorm(heart$old, main = "Q-Q Plot oldpeak");qqline(
+heart$old, col = 2)
+
+
+par(juntar)
+
+```
+
+Shapiro test para distribución normal.
+
+```{r}
+norm_test1 <- shapiro.test(heart$chol)
+print(norm_test1)
+
+norm_test2 <- shapiro.test(heart$trtbps)
+print(norm_test2)
+
+norm_test3 <- shapiro.test(heart$thalachh)
+print(norm_test3)
+
+norm_test4 <- shapiro.test(heart$oldpeak)
+print(norm_test4)
+```
+
+Gráfico en el que se superpone la línea de distribución normal.
+
+```{r}
+plotn <- function(x,main="Histograma de frecuencias \ny distribución normal",
+                  xlab="X",ylab="Densidad") {
+                  min <- min(x)
+                  max <- max(x)
+                  media <- mean(x)
+                  dt <- sd(x)
+                  hist(x,freq=F,main=main,xlab=xlab,ylab=ylab)
+                  curve(dnorm(x,media,dt), min, max,add = T,col="blue")
+}
+
+plotn(heart$chol,main="Gráfico de distribución normal chol")
+plotn(heart$trtbps,main="Gráfico de distribución normal trtbps")
+plotn(heart$thalachh,main="Gráfico de distribución normal thalachh")
+plotn(heart$oldpeak,main="Gráfico de distribución normal oldpeak")
+```
+
+Homogeneidad de varianzas.
+
+```{r}
+library(car)
+
+leveneTest(y = heart$trtbps,group = heart$age, center = "median")
+
+leveneTest(y = heart$trtbps,group = heart$sex, center = "median")
+
+leveneTest(y = heart$trtbps,group = heart$cp , center = "median")
+
+leveneTest(y = heart$trtbps,group = heart$fbs , center = "median")
+
+
+leveneTest(y = heart$trtbps,group = heart$restecg , center = "median")
+
+leveneTest(y = heart$trtbps,group = heart$exng , center = "median")
+
+
+leveneTest(y = heart$trtbps,group = heart$slp , center = "median")
+
+leveneTest(y = heart$trtbps,group = heart$caa , center = "median")
+
+leveneTest(y = heart$trtbps,group = heart$thall, center = "median")
+
+```
+
+Fligner-Killeen test.
+
+```{r}
+fligner.test(trtbps ~ output, data = heart)$p.value
+
+fligner.test(chol~ output, data = heart)$p.value
+
+fligner.test(thalachh ~ output, data = heart)$p.value
+
+fligner.test(oldpeak ~ output, data = heart)$p.value
+
+fligner.test(age  ~ output, data = heart)$p.value
+```
+
+## 4.3
+
+Correlación entre variables numéricas.
+
+```{r}
+library(dplyr)
+source("http://www.sthda.com/upload/rquery_cormat.r")
+
+at_num <- select_if(heart,is.numeric)
+
+cor(at_num , method="pearson")
+
+rquery.cormat(at_num )
+```
+
+Regresión lineal.
+
+```{r}
+lr1<- lm(trtbps~age,data=heart)
+summary(lr1)$adj.r.squared
+
+
+lr2 <-lm(chol ~ age,data=heart)
+summary(lr2)$adj.r.squared
+
+lr3 <-lm(thalachh ~ age,data=heart)
+summary(lr3)$adj.r.squared
+
+lr4 <-lm(oldpeak ~ age,data=heart)
+summary(lr4)$adj.r.squared
+```
+
+T.test
+
+```{r}
+boxplot(heart$age ~ heart$sex)
+t.test(age ~ sex, data=heart)$p.value
+```
+
+## 5. Resultados
+
+```{r}
+library(ggplot2)
+
+ggplot(data = heart,aes(x=sex,fill=output)) + geom_bar() + xlab("Sexo") + ylab("Cuenta pacientes")
+
+ggplot(data = heart,aes(x=restecg,fill=output)) + geom_bar() + xlab("restecg")+ ylab("Cuenta pacientes")
+
+ggplot(data = heart,aes(x=cp,fill=output)) + geom_bar() + xlab("cp")+ ylab("Cuenta pacientes")
+
+ggplot(data = heart,aes(x=thall,fill=output)) + geom_bar() + xlab("thall")+ ylab("Cuenta pacientes")
+```
